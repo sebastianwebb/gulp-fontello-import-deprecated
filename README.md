@@ -1,3 +1,69 @@
+### sebcus ###
+
+Needed to add function to catch potential 400 errors when connecting to fontello because it doesn't like the format of the config.json file:
+
+function getIconFont(options, cb) {
+ 
+  return apiRequest(options,
+
+      // success callback
+      function(sessionUrl) {
+        var zipFile;
+        zipFile = needle.get("" + sessionUrl + "/get", function(error, response, body) {
+          if (error) {
+            throw error;
+          }
+        });
+        if (options.css && options.font) {
+          return zipFile.pipe(unzip.Parse()).on('entry', (function(entry) {
+            var cssPath, dirName, fileName, fontPath, pathName, type, _ref;
+            pathName = entry.path, type = entry.type;
+            if (type === 'File') {
+              dirName = (_ref = path.dirname(pathName).match(/\/([^\/]*)$/)) != null ? _ref[1] : void 0;
+              fileName = path.basename(pathName);
+              switch (dirName) {
+                case 'css':
+                  cssPath = path.join(options.css, fileName);
+                  return entry.pipe(fs.createWriteStream(cssPath));
+                case 'font':
+                  fontPath = path.join(options.font, fileName);
+                  return entry.pipe(fs.createWriteStream(fontPath));
+                default:
+                  return entry.autodrain();
+              }
+            }
+          })).on('finish', (function() {
+            console.log('Install complete.\n');
+            cb();
+            return;
+          }));
+        } else {
+          return zipFile.pipe(unzip.Extract({
+            path: 'icon-example'
+          })).on('finish', (function() {
+            console.log('Install complete.\n');
+            cb();
+            return;
+          }));
+        }
+      },
+
+      // error callback (sebcus)
+      // When I tried to add the font awesome star icon, I got an error.
+      // "data.glyphs.356 no (or more than one) schemas match"
+      // maybe because in config.json the width was set to null for some unknown reason
+      // the height="1em" in the SVG possibly...
+      function(response){
+        console.log('There was an error connecting to fontello', response.statusMessage, '('+response.statusCode+')');
+        console.log(response.body);
+      }
+
+  );
+}
+
+
+
+
 gulp-fontello-import
 ====================
 
